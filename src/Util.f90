@@ -5,15 +5,19 @@ MODULE Util
     REAL(8) :: pi=3.141592
     
     TYPE direction
-        REAL(8) :: x, y
+        REAL(8) :: x, y, z
     END TYPE
     
     TYPE neutron
         REAL(8) :: xy(2)
         INTEGER :: g
-        INTEGER :: idxx, idxy, idxz
+        INTEGER :: idxx, idxy
         REAL(8) :: wt
         TYPE(direction) :: dir
+    END TYPE
+    TYPE fsource
+        INTEGER :: idxx, idxy
+        REAL(8) :: xy(2)
     END TYPE
     
     TYPE(fsource), POINTER, DIMENSION(:) :: que, quenxt, quetmp
@@ -32,16 +36,10 @@ MODULE Util
         REAL(8), POINTER, DIMENSION(:,:) :: sct, sctcdf
     END TYPE
     TYPE(xsec), POINTER, DIMENSION(:) :: xseclist
-    ALLOCATE(xseclist(1))
-    ALLOCATE(xseclist(1).tot(2)); ALLOCATE(xseclist(1).nuf(2)); ALLOCATE(xseclist(1).abs(2)); 
-    ALLOCATE(xseclist(1).sct(2,2)); ALLOCATE(xseclist(1).sctcdf(2,2)); 
-    xseclist(1).tot(1)=1.19623E-01; xseclist(1).tot(2)=1.44581E-01
-    xseclist(1).nuf(1)=7.24142E-02; xseclist(1).nuf(2)=3.95781E-02
-    xseclist(1).abs(1)=1.25593E-02; xseclist(1).abs(2)=1.54202E-02
-    xseclist(1).sct(1,1)=3.27683E-02; xseclist(1).sct(1,2)=1.87221E-02
-    xseclist(1).sct(2,1)=0.00000E-00; xseclist(2).sct(2,2)=5.51891E-02
-    xseclist(1).sctcdf(1,1)=xseclist(1)sct(1,1)/xseclist(1).sct(1,2); xseclist(1).sctcdf(1,2)=xseclist(1)sct(1,2)/xseclist(1).sct(1,2); 
-    xseclist(1).sctcdf(2,1)=xseclist(1)sct(2,1)/xseclist(1).sct(2,2); xseclist(1).sctcdf(2,2)=xseclist(1)sct(2,2)/xseclist(1).sct(2,2); 
+    INTEGER :: ng=2
+    INTEGER, POINTER, DIMENSION(:,:) :: compmap
+    
+    CONTAINS
     
     FUNCTION chkboundary(ix, iy)
         INTEGER, INTENT(IN) :: ix, iy
@@ -49,6 +47,22 @@ MODULE Util
         chkboundary = .FALSE.
         IF (ix .lt. 1 .or. ix .gt. nx) chkboundary = .TRUE.
         IF (iy .lt. 1 .or. iy .gt. ny) chkboundary = .TRUE.
+    END FUNCTION
+    
+    FUNCTION GetWtAdj(nht) RESULT(wtadj)
+        INTEGER :: nht
+        REAL(8) :: wtadj
+        wtadj=1._8*nht/nq
+    END FUNCTION
+    
+    FUNCTION getNG()
+        INTEGER :: getNG
+        getNG=ng
+    END FUNCTION
+    
+    FUNCTION GetNCurQue() RESULT(ret)
+        INTEGER :: ret
+        ret=ng
     END FUNCTION
     
     SUBROUTINE InitMCUtil(nht)
@@ -75,6 +89,16 @@ MODULE Util
         keff=1.
         ALLOCATE(compmap(nx,ny))
         compmap=1
+        ALLOCATE(xseclist(1))
+        ALLOCATE(xseclist(1).tot(2)); ALLOCATE(xseclist(1).nuf(2)); ALLOCATE(xseclist(1).abs(2)); 
+        ALLOCATE(xseclist(1).sct(2,2)); ALLOCATE(xseclist(1).sctcdf(2,2)); 
+        xseclist(1).tot(1)=1.19623E-01; xseclist(1).tot(2)=1.44581E-01
+        xseclist(1).nuf(1)=7.24142E-02; xseclist(1).nuf(2)=3.95781E-02
+        xseclist(1).abs(1)=1.25593E-02; xseclist(1).abs(2)=1.54202E-02
+        xseclist(1).sct(1,1)=3.27683E-02; xseclist(1).sct(1,2)=1.87221E-02
+        xseclist(1).sct(2,1)=0.00000E-00; xseclist(1).sct(2,2)=5.51891E-02
+        xseclist(1).sctcdf(1,1)=xseclist(1).sct(1,1)/xseclist(1).sct(1,2); xseclist(1).sctcdf(1,2)=xseclist(1).sct(1,2)/xseclist(1).sct(1,2); 
+        xseclist(1).sctcdf(2,1)=xseclist(1).sct(2,1)/xseclist(1).sct(2,2); xseclist(1).sctcdf(2,2)=xseclist(1).sct(2,2)/xseclist(1).sct(2,2); 
     END SUBROUTINE
     
     SUBROUTINE GenFS(ns, i)
@@ -95,7 +119,7 @@ MODULE Util
         xsnuf=xseclist(tcomp).nuf(ns.g)
         
         CALL RANDOM_NUMBER(rn)
-        nfn=INTEGER(xsnuf/xstot/keff*ns.wt+rn)
+        nfn=INT(xsnuf/xstot/keff*ns.wt+rn)
         IF (nfn .gt. 0 ) THEN
             DO i=1, nfn
                 nqnxt=nqnxt+1
@@ -176,7 +200,7 @@ MODULE Util
         ELSE
             dts=ly
             IF (dir.y .gt. 0 ) THEN
-                surf=NOTRH
+                surf=NORTH
             ELSE
                 surf=SOUTH
             END IF
@@ -201,7 +225,7 @@ MODULE Util
         TYPE(direction), INTENT(IN) :: dir      
         
         pos(1)=pos(1)+length*dir.x
-        pos(2)=pox(2)+length*dir.y
+        pos(2)=pos(2)+length*dir.y
         
     END SUBROUTINE
     
