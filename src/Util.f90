@@ -1,0 +1,4 @@
+MODULE Util
+    IMPLICIT NONE
+    
+END MODULE Util
